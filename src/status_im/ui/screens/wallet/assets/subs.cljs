@@ -7,5 +7,5 @@
   (fn [_db]
     {:token-symbol "SNT"
      :token-name   "Status"
-     :token-value  30
+     :token-value  30.24
      :usd-value    0.93}))

@@ -15,7 +15,9 @@
             [status-im.ui.screens.wallet.main.styles :as main.styles]
             [status-im.ui.components.tabs.views :as tabs]
             [status-im.ui.components.list.views :as list]
-            [status-im.ui.components.styles :as components.styles]))
+            [status-im.ui.components.styles :as components.styles]
+            [status-im.ui.screens.wallet.transactions.views :as transactions]
+            [status-im.utils.utils :as utils]))
 
 
 (defview my-token-tab-title [active?]
@@ -39,17 +41,20 @@
         (str usd-value " " "USD")]
        [components/change-display 0.05]]
       [react/view {:style (merge button.styles/buttons-container main.styles/buttons)}
-       [button/button {:disabled? syncing?
-                       :on-press  #()
-                       :style     (button.styles/button-bar :first) :text-style assets.styles/main-button-text}
+       [button/button {:disabled?  syncing?
+                       :on-press   #(utils/show-popup "TODO" "Not implemented yet!")
+                       :style      (assets.styles/button-bar :first)
+                       :text-style assets.styles/main-button-text}
         (i18n/label :t/wallet-send-token {:symbol token-symbol})]
-       [button/button {:disabled? true
-                       :on-press  #()
-                       :style     (button.styles/button-bar :last) :text-style assets.styles/main-button-text}
+       [button/button {:disabled?  true
+                       :on-press   #(utils/show-popup "TODO" "Not implemented yet!")
+                       :style      (assets.styles/button-bar :last)
+                       :text-style assets.styles/main-button-text}
         (i18n/label :t/wallet-exchange)]]]
      [react/view
-      [react/text (i18n/label :t/transactions)]
-      [react/text "Transaction list goes here"]]]))
+      [react/text {:style assets.styles/transactions-title} (i18n/label :t/transactions)]
+      [react/view {:flex-direction :row}
+        [transactions/history-list]]]]))
 
 (defn market-value-tab-title [active?]
   [react/text {:uppercase? true
