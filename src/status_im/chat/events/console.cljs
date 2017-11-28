@@ -21,7 +21,7 @@
           "js" (let [{:keys [err data messages]} handler-data
                      content                     (or err data)
                      message-events              (mapv (fn [{:keys [message type]} id]
-                                                         [:received-message
+                                                         [:chat-received-message/add
                                                           {:message-id   id
                                                            :content      (str type ": " message)
                                                            :content-type const/text-content-type
@@ -31,7 +31,7 @@
                                                            :to           "me"}])
                                                        messages random-id-seq)]
                  (conj message-events
-                       [:received-message
+                       [:chat-received-message/add
                         {:message-id   (first random-id-seq)
                          :content      (str content)
                          :content-type const/text-content-type
@@ -45,7 +45,7 @@
   (str url "/donate/0x%s"))
 
 (defn- faucet-response-event [message-id content]
-  [:received-message
+  [:chat-received-message/add
    {:message-id   message-id
     :content      content
     :content-type const/text-content-type
@@ -91,7 +91,7 @@
                                             :last-updated now})
            (assoc :dispatch-n (if debug?
                                 [[:initialize-debugging {:force-start? true}]
-                                 [:received-message
+                                 [:chat-received-message/add
                                   {:message-id   random-id
                                    :content      (i18n/label :t/debug-enabled)
                                    :content-type const/text-content-type

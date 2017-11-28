@@ -115,9 +115,9 @@
             (cache/add! processed-message)
             (processed-messages/save processed-message))
           (case type
-            :message               (dispatch [:received-protocol-message! message])
-            :group-message         (dispatch [:received-protocol-message! message])
-            :public-group-message  (dispatch [:received-protocol-message! message])
+            :message               (dispatch [:chat-received-message/add-protocol-message message])
+            :group-message         (dispatch [:chat-received-message/add-protocol-message message])
+            :public-group-message  (dispatch [:chat-received-message/add-protocol-message message])
             :ack                   (if (#{:message :group-message} (:type payload))
                                      (dispatch [:message-delivered message])
                                      (dispatch [:pending-message-remove message]))
@@ -198,8 +198,8 @@
       #_(joined-chat-message group-id from ack-message-id))))
 
 (register-handler :participant-removed-from-group
-  (u/side-effect!
-    (fn [{:keys [current-public-key chats]}
+                  (u/side-effect!
+                   (fn [{:keys [current-public-key chats]}
          [_ {:keys                                              [from]
              {:keys [group-id identity message-id] :as payload} :payload
              :as                                                message}]]
@@ -213,7 +213,7 @@
                       (participant-removed-from-group-message identity from payload)
                       :group-id group-id)]
                 (chats/remove-contacts group-id [identity])
-                (dispatch [:received-message message])))))))))
+                (dispatch [:chat-received-message/add message])))))))))
 
 (register-handler ::you-removed-from-group
   (u/side-effect!
@@ -223,7 +223,7 @@
       (when (chats/new-update? timestamp group-id)
         (let [message  (you-removed-from-group-message from payload)
               message' (assoc message :group-id group-id)]
-          (dispatch [:received-message message']))
+          (dispatch [:chat-received-message/add message']))
         (protocol/stop-watching-group! {:web3     web3
                                         :group-id group-id})
         (dispatch [:update-chat! {:chat-id         group-id
@@ -261,7 +261,7 @@
       (let [admin (get-in chats [group-id :group-admin])]
         (when (= from admin)
           (dispatch
-            [:received-message
+            [:chat-received-message/add
              (participant-invited-to-group-message group-id current-public-key identity from message-id timestamp)])
           (when-not (= current-public-key identity)
             (dispatch [:add-contact-to-group! group-id identity])))))))

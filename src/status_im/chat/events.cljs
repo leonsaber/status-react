@@ -7,10 +7,11 @@
             [status-im.chat.models.unviewed-messages :as unviewed-messages-model]
             [status-im.chat.sign-up :as sign-up]
             [status-im.chat.constants :as chat-const]
-            [status-im.data-store.handler-data :as handler-data]
-            [status-im.data-store.messages :as msg-store]
-            [status-im.data-store.contacts :as contacts-store]
             [status-im.data-store.chats :as chats-store]
+            [status-im.data-store.contacts :as contacts-store]
+            [status-im.data-store.handler-data :as handler-data]
+            [status-im.data-store.requests :as requests-store]
+            [status-im.data-store.messages :as messages-store]
             [status-im.ui.screens.navigation :as navigation]
             [status-im.protocol.core :as protocol]
             [status-im.constants :as const]
@@ -28,27 +29,27 @@
 (re-frame/reg-cofx
   :stored-unviewed-messages
   (fn [cofx _]
-    (assoc cofx :stored-unviewed-messages (msg-store/get-unviewed))))
+    (assoc cofx :stored-unviewed-messages (messages-store/get-unviewed))))
 
 (re-frame/reg-cofx
   :get-stored-message
   (fn [cofx _]
-    (assoc cofx :get-stored-message msg-store/get-by-id)))
+    (assoc cofx :get-stored-message messages-store/get-by-id)))
 
 (re-frame/reg-cofx
   :get-stored-messages
   (fn [cofx _]
-    (assoc cofx :get-stored-messages msg-store/get-by-chat-id)))
+    (assoc cofx :get-stored-messages messages-store/get-by-chat-id)))
 
 (re-frame/reg-cofx
   :get-last-stored-message
   (fn [cofx _]
-    (assoc cofx :get-last-stored-message msg-store/get-last-message)))
+    (assoc cofx :get-last-stored-message messages-store/get-last-message)))
 
 (re-frame/reg-cofx
   :get-message-previews
   (fn [cofx _]
-    (assoc cofx :message-previews (msg-store/get-previews))))
+    (assoc cofx :message-previews (messages-store/get-previews))))
 
 (re-frame/reg-cofx
   :all-stored-chats
@@ -60,17 +61,43 @@
   (fn [cofx _]
     (assoc cofx :get-stored-chat chats-store/get-by-id)))
 
+;;;; Helper fns
+
+(defmulti save-entity (fn [[type entity]] type))
+
+(defmethod save-entity :chat
+  [[_ entity]]
+  (chats-store/save entity))
+
+(defmethod save-entity :contact
+  [[_ entity]]
+  (contacts-store/save entity))
+
+(defmethod save-entity :request
+  [[_ entity]]
+  (requests-store/save entity))
+
+(defmethod save-entity :message
+  [[_ entity]]
+  (messages-store/save entity))
+
 ;;;; Effects
 
 (re-frame/reg-fx
   :update-message
   (fn [message]
-    (msg-store/update-message message)))
+    (messages-store/update-message message)))
+
+(re-frame/reg-fx
+ :save-entities
+ (fn [entities]
+   (doseq [e entities]
+     (save-entity e))))
 
 (re-frame/reg-fx
   :save-message
   (fn [{:keys [chat-id] :as message}]
-    (msg-store/save chat-id message)))
+    (messages-store/save chat-id message)))
 
 (re-frame/reg-fx
   :save-chat

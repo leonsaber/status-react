@@ -118,7 +118,7 @@
   [re-frame/trim-v (re-frame/inject-cofx :random-id)]
   (fn [{:keys [db random-id now]} [{:keys [message status]} message-id]]
     (cond-> {:db         db
-             :dispatch-n [[:received-message
+             :dispatch-n [[:chat-received-message/add
                            {:message-id   random-id
                             :content      message
                             :content-type const/text-content-type
@@ -126,14 +126,14 @@
                             :chat-id      const/console-chat-id
                             :from         const/console-chat-id
                             :to           "me"}]]}
-      message-id
-      (message-seen message-id)
+            message-id
+            (message-seen message-id)
 
-      (= "confirmed" status)
-      (sign-up-confirmed now)
+            (= "confirmed" status)
+            (sign-up-confirmed now)
 
-      (= "failed" status)
-      (update :dispatch-n conj (sign-up/incorrect-confirmation-code-event random-id)))))
+            (= "failed" status)
+            (update :dispatch-n conj (sign-up/incorrect-confirmation-code-event random-id)))))
 
 (handlers/register-handler-fx
   ::contacts-synced

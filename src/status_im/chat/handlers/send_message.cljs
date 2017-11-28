@@ -233,7 +233,7 @@
             (when (or (not= type "debug")
                       js/goog.DEBUG
                       (get-in contacts [chat-id :debug?]))
-              (dispatch [:received-message
+              (dispatch [:chat-received-message/add
                          {:message-id   (random/id)
                           :content      (str type ": " message)
                           :content-type content-type-log-message
@@ -242,7 +242,7 @@
                           :from         chat-id
                           :to           "me"}]))))
         (when content
-          (dispatch [:received-message
+          (dispatch [:chat-received-message/add
                      {:message-id   (random/id)
                       :content      (str content)
                       :content-type text-content-type
@@ -254,7 +254,7 @@
 (defn handle-message-from-bot [{:keys [message chat-id]}]
   (cond
     (string? message)
-    (dispatch [:received-message
+    (dispatch [:chat-received-message/add
                {:message-id   (random/id)
                 :content      (str message)
                 :content-type text-content-type
@@ -375,7 +375,7 @@
 (register-handler :add-request-message!
   (u/side-effect!
     (fn [_ [_ {:keys [content chat-id]}]]
-      (dispatch [:received-message
+      (dispatch [:chat-received-message/add
                  {:message-id   (random/id)
                   :content      (assoc content :bot chat-id)
                   :content-type content-type-command-request
