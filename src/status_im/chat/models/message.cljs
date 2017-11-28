@@ -6,7 +6,8 @@
             [status-im.chat.models :as chat-model]
             [status-im.chat.models.commands :as commands-model]
             [status-im.chat.models.unviewed-messages :as unviewed-messages-model]
-            [status-im.chat.events.requests :as requests-events]))
+            [status-im.chat.events.requests :as requests-events]
+            [taoensso.timbre :as log]))
 
 (defn- get-current-account
   [{:accounts/keys [accounts current-account-id]}]
@@ -31,7 +32,8 @@
     (:ref (get available-commands-responses response-name))))
 
 (defn receive
-  [{:keys [db message-exists? get-last-stored-message pop-up-chat? get-last-clock-value now random-id] :as cofx}
+  [{:keys [db message-exists? get-stored-chat get-last-stored-message
+           pop-up-chat? get-last-clock-value now random-id]}
    messages]
   (reduce
    (fn [{:keys [db] :as current-cofx} message]
@@ -49,10 +51,12 @@
 
          (let [group-chat?      (not (nil? group-id))
                chat-exists?     (get-in db [:chats chat-identifier])
+               cofx-for-chat    (assoc current-cofx :get-stored-chat get-stored-chat
+                                                    :now now)
                fx               (if chat-exists?
-                                  (chat-model/upsert-chat current-cofx {:chat-id    chat-identifier
-                                                                        :group-chat group-chat?})
-                                  (chat-model/add-chat current-cofx chat-identifier))
+                                  (chat-model/upsert-chat cofx-for-chat {:chat-id    chat-identifier
+                                                                         :group-chat group-chat?})
+                                  (chat-model/add-chat cofx-for-chat chat-identifier))
                command-request? (= content-type constants/content-type-command-request)
                command          (:command content)
                enriched-message (cond-> (assoc (chat-utils/check-author-direction
@@ -77,7 +81,7 @@
                                        (assoc-in [:chats chat-identifier :last-message] enriched-message))]
            (cond-> (-> fx
                        (update :db update-db-fx)
-                       (update :save-entities #(conj (or % []) (dissoc enriched-message :new?))))
+                       (update :save-entities #(conj (or % []) [:message (dissoc enriched-message :new?)])))
 
                    command
                    (update :dispatch-n concat [[:request-command-message-data enriched-message :short-preview]

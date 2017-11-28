@@ -27,7 +27,7 @@
 (defn add-chat
   ([cofx chat-id]
    (add-chat cofx chat-id {}))
-  ([{:keys [db] :as cofx} chat-id chat-props]
+  ([{:keys [db save-entities] :as cofx} chat-id chat-props]
    (let [new-chat       (create-new-chat cofx chat-id chat-props)
          existing-chats (:chats db)]
      {:db (cond-> db

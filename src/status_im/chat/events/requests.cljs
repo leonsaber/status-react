@@ -40,4 +40,4 @@
                  :status     "open"}]
     (-> fx
         (assoc-in [:db :chats chat-id :requests message-id] request)
-        (update :save-entities #(conj (or % []) request)))))
+        (update :save-entities #(conj (or % []) [:request request])))))

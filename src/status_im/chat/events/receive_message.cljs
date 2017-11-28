@@ -32,10 +32,10 @@
  :chat-received-message/add-protocol-message
  message-model/receive-interceptors
  (fn [cofx [{:keys [from to payload]}]]
-   (message-model/receive cofx (merge payload
+   (message-model/receive cofx [(merge payload
                                       {:from    from
                                        :to      to
-                                       :chat-id from}))))
+                                       :chat-id from})])))
 
 (handlers/register-handler-fx
  :chat-received-message/add
@@ -55,5 +55,5 @@
  (fn [{:keys [db] :as cofx} [chat-id message]]
    (if (and (:status-node-started? db)
             (get-in db [:contacts/contacts chat-id :jail-loaded?]))
-     (message-model/add-message cofx message)
+     (message-model/receive cofx [message])
      {:dispatch-later [{:ms 400 :dispatch [:chat-received-message/add-when-commands-loaded chat-id message]}]})))
