@@ -44,23 +44,22 @@
     :to           "me"}])
 
 (def start-signup-events
-  [[:chat-received-message/add
-    {:message-id   (random/id)
-     :content      {:command "phone"
-                    :content (label :t/phone-number-required)}
-     :content-type const/content-type-command-request
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]
-   [:chat-received-message/add
-    {:message-id   (random/id)
-     :content      (label :t/shake-your-phone)
-     :content-type const/text-content-type
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]])
+  [[:chat-received-message/add-bulk
+    [{:message-id   (random/id)
+      :content      {:command "phone"
+                     :content (label :t/phone-number-required)}
+      :content-type const/content-type-command-request
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}
+     {:message-id   (random/id)
+      :content      (label :t/shake-your-phone)
+      :content-type const/text-content-type
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}]]])
 
 ;; -- Saving password ----------------------------------------
 (def account-generation-event
@@ -85,40 +84,37 @@
     :to           "me"}])
 
 (defn passphrase-messages-events [mnemonic signing-phrase crazy-math-message?]
-  [[:chat-received-message/add
-    {:message-id   chat-const/passphrase-message-id
-     :content      (if crazy-math-message?
-                     (label :t/phew-here-is-your-passphrase)
-                     (label :t/here-is-your-passphrase))
-     :content-type const/text-content-type
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]
-   [:chat-received-message/add
-    {:message-id   (random/id)
-     :content      mnemonic
-     :content-type const/text-content-type
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]
-   [:chat-received-message/add
-    {:message-id   chat-const/signing-phrase-message-id
-     :content      (label :t/here-is-your-signing-phrase)
-     :content-type const/text-content-type
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]
-   [:chat-received-message/add
-    {:message-id   (random/id)
-     :content      signing-phrase
-     :content-type const/text-content-type
-     :outgoing     false
-     :chat-id      const/console-chat-id
-     :from         const/console-chat-id
-     :to           "me"}]])
+  [[:chat-received-message/add-bulk
+    [{:message-id   chat-const/passphrase-message-id
+      :content      (if crazy-math-message?
+                      (label :t/phew-here-is-your-passphrase)
+                      (label :t/here-is-your-passphrase))
+      :content-type const/text-content-type
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}
+     {:message-id   (random/id)
+      :content      mnemonic
+      :content-type const/text-content-type
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}
+     {:message-id   chat-const/signing-phrase-message-id
+      :content      (label :t/here-is-your-signing-phrase)
+      :content-type const/text-content-type
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}
+     {:message-id   (random/id)
+      :content      signing-phrase
+      :content-type const/text-content-type
+      :outgoing     false
+      :chat-id      const/console-chat-id
+      :from         const/console-chat-id
+      :to           "me"}]]])
 
 (def intro-status
   {:message-id   chat-const/intro-status-message-id
