@@ -95,9 +95,9 @@
      (save-entity e))))
 
 (re-frame/reg-fx
-  :save-message
-  (fn [{:keys [chat-id] :as message}]
-    (messages-store/save chat-id message)))
+ :save-message
+ (fn [message]
+   (messages-store/save message)))
 
 (re-frame/reg-fx
   :save-chat
@@ -192,12 +192,13 @@
              :save-all-contacts [sign-up/console-contact]}
 
       (not current-account-id)
-      (update :dispatch-n concat sign-up/intro-events))))
+      (update :dispatch-n concat [[:chat-received-message/add sign-up/intro-status-message]
+                                  sign-up/intro-event]))))
 
 (handlers/register-handler-fx
-  :init-console-chat
-  (fn [{:keys [db]} _]
-    (init-console-chat db)))
+ :init-console-chat
+ (fn [{:keys [db]} _]
+   (init-console-chat db)))
 
 (handlers/register-handler-fx
   :initialize-chats
@@ -255,27 +256,28 @@
                            group-chat (assoc :group-id chat-id))})))))
 
 (handlers/register-handler-fx
-  :show-mnemonic
-  [(re-frame/inject-cofx :get-stored-message) re-frame/trim-v]
-  (fn [{:keys [get-stored-message]} [mnemonic signing-phrase]]
-    (let [crazy-math-message? (get-stored-message chat-const/crazy-math-message-id)]
-      {:dispatch-n (sign-up/passphrase-messages-events mnemonic
-                                                       signing-phrase
-                                                       crazy-math-message?)})))
+ :show-mnemonic
+ [(re-frame/inject-cofx :get-stored-message) re-frame/trim-v]
+ (fn [{:keys [get-stored-message]} [mnemonic signing-phrase]]
+   (let [crazy-math-message? (get-stored-message chat-const/crazy-math-message-id)]
+     {:dispatch-n [[:chat-received-message/add-bulk
+                    (sign-up/passphrase-messages mnemonic
+                                                 signing-phrase
+                                                 crazy-math-message?)]]})))
 
 (handlers/register-handler-fx
-  :account-generation-message
-  [(re-frame/inject-cofx :get-stored-message)]
-  (fn [{:keys [get-stored-message]} _]
-    (when-not (get-stored-message chat-const/passphrase-message-id)
-      {:dispatch sign-up/account-generation-event})))
+ :account-generation-message
+ [(re-frame/inject-cofx :get-stored-message)]
+ (fn [{:keys [get-stored-message]} _]
+   (when-not (get-stored-message chat-const/passphrase-message-id)
+     {:dispatch [:chat-received-message/add sign-up/account-generation-message]})))
 
 (handlers/register-handler-fx
-  :move-to-internal-failure-message
-  [(re-frame/inject-cofx :get-stored-message)]
-  (fn [{:keys [get-stored-message]} _]
-    (when-not (get-stored-message chat-const/move-to-internal-failure-message-id)
-      {:dispatch sign-up/move-to-internal-failure-event})))
+ :move-to-internal-failure-message
+ [(re-frame/inject-cofx :get-stored-message)]
+ (fn [{:keys [get-stored-message]} _]
+   (when-not (get-stored-message chat-const/move-to-internal-failure-message-id)
+     {:dispatch [:chat-received-message/add sign-up/move-to-internal-failure-message]})))
 
 (handlers/register-handler-fx
   :browse-link-from-message

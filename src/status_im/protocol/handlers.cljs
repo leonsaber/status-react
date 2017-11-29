@@ -152,10 +152,11 @@
 
 (defn joined-chat-message [chat-id from message-id]
   (let [contact-name (:name (contacts/get-by-id from))]
-    (messages/save chat-id {:from         "system"
-                            :message-id   (str message-id "_" from)
-                            :content      (str (or contact-name from) " " (label :t/received-invitation))
-                            :content-type text-content-type})))
+    (messages/save {:from         "system"
+                    :chat-id      chat-id
+                    :message-id   (str message-id "_" from)
+                    :content      (str (or contact-name from) " " (label :t/received-invitation))
+                    :content-type text-content-type})))
 
 (defn participant-invited-to-group-message [chat-id current-identity identity from message-id timestamp]
   (let [inviter-name (:name (contacts/get-by-id from))
@@ -186,10 +187,11 @@
 
 (defn participant-left-group-message
   [chat-id from {:keys [message-id timestamp]}]
-  (let [left-name (:name (contacts/get-by-id from))]
-    (->> (str (or left-name from) " " (label :t/left))
-         (system-message message-id timestamp)
-         (messages/save chat-id))))
+  (let [left-name (:name (contacts/get-by-id from))
+        message-text (str (or left-name from) " " (label :t/left))]
+    (-> (system-message message-id timestamp message-text)
+        (assoc :chat-id chat-id)
+        (messages/save))))
 
 (register-handler :group-chat-invite-acked
   (u/side-effect!
@@ -197,23 +199,24 @@
       (log/debug action from group-id ack-message-id)
       #_(joined-chat-message group-id from ack-message-id))))
 
-(register-handler :participant-removed-from-group
-                  (u/side-effect!
-                   (fn [{:keys [current-public-key chats]}
-         [_ {:keys                                              [from]
-             {:keys [group-id identity message-id] :as payload} :payload
-             :as                                                message}]]
-      (when-not (messages/get-by-id message-id)
-        (let [admin (get-in chats [group-id :group-admin])]
-          (when (= admin from)
-            (if (= current-public-key identity)
-              (dispatch [::you-removed-from-group message])
-              (let [message
-                    (assoc
-                      (participant-removed-from-group-message identity from payload)
-                      :group-id group-id)]
-                (chats/remove-contacts group-id [identity])
-                (dispatch [:chat-received-message/add message])))))))))
+(register-handler
+ :participant-removed-from-group
+ (u/side-effect!
+  (fn [{:keys [current-public-key chats]}
+      [_ {:keys                                              [from]
+          {:keys [group-id identity message-id] :as payload} :payload
+          :as                                                message}]]
+    (when-not (messages/get-by-id message-id)
+      (let [admin (get-in chats [group-id :group-admin])]
+        (when (= admin from)
+          (if (= current-public-key identity)
+            (dispatch [::you-removed-from-group message])
+            (let [message
+                  (assoc
+                   (participant-removed-from-group-message identity from payload)
+                   :group-id group-id)]
+              (chats/remove-contacts group-id [identity])
+              (dispatch [:chat-received-message/add message])))))))))
 
 (register-handler ::you-removed-from-group
   (u/side-effect!

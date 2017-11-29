@@ -112,16 +112,18 @@
   (fn [db [_ add-to-chat-id {:keys [chat-id command]}]]
     (cu/add-message-to-db db add-to-chat-id chat-id command)))
 
-(register-handler ::save-command!
-  (u/side-effect!
-    (fn [db [_ chat-id {:keys [command]} hidden-params]]
-      (let [preview (get-in db [:message-data :preview (:message-id command)])
-            command (cond-> (-> command
-                                (update-in [:content :params] #(apply dissoc % hidden-params))
-                                (dissoc :to-message :has-handler :raw-input))
-                      preview (assoc :preview (pr-str preview)))]
-        (dispatch [:upsert-chat! {:chat-id chat-id}])
-        (messages/save chat-id command)))))
+(register-handler
+ ::save-command!
+ (u/side-effect!
+  (fn [db [_ chat-id {:keys [command]} hidden-params]]
+    (let [preview (get-in db [:message-data :preview (:message-id command)])
+          command (cond-> (-> command
+                              (assoc :chat-id chat-id)
+                              (update-in [:content :params] #(apply dissoc % hidden-params))
+                              (dissoc :to-message :has-handler :raw-input))
+                    preview (assoc :preview (pr-str preview)))]
+      (dispatch [:upsert-chat! {:chat-id chat-id}])
+      (messages/save command)))))
 
 (register-handler ::dispatch-responded-requests!
   (u/side-effect!
@@ -195,24 +197,26 @@
   (fn [db [_ {:keys [chat-id message]}]]
     (cu/add-message-to-db db chat-id chat-id message)))
 
-(register-handler ::save-message!
-  (after (fn [_ [_ params]]
-           (dispatch [::send-message! params])))
-  (u/side-effect!
-    (fn [_ [_ {:keys [chat-id message]}]]
-      (dispatch [:upsert-chat! {:chat-id chat-id}])
-      (messages/save chat-id message))))
+(register-handler
+ ::save-message!
+ (after (fn [_ [_ params]]
+          (dispatch [::send-message! params])))
+ (u/side-effect!
+  (fn [_ [_ {:keys [chat-id message]}]]
+    (dispatch [:upsert-chat! {:chat-id chat-id}])
+    (messages/save message))))
 
-(register-handler ::send-dapp-message
-  (u/side-effect!
-    (fn [{:accounts/keys [current-account-id] :as db} [_ chat-id {:keys [content]}]]
-      (let [data (get-in db [:local-storage chat-id])]
-        (status/call-function!
-          {:chat-id    chat-id
-           :function   :on-message-send
-           :parameters {:message content}
-           :context    {:data data
-                        :from current-account-id}})))))
+(register-handler
+ ::send-dapp-message
+ (u/side-effect!
+  (fn [{:accounts/keys [current-account-id] :as db} [_ chat-id {:keys [content]}]]
+    (let [data (get-in db [:local-storage chat-id])]
+      (status/call-function!
+       {:chat-id    chat-id
+        :function   :on-message-send
+        :parameters {:message content}
+        :context    {:data data
+                     :from current-account-id}})))))
 
 (register-handler :received-bot-response
   (u/side-effect!
