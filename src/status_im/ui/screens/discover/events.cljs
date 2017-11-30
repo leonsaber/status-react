@@ -1,27 +1,23 @@
 (ns status-im.ui.screens.discover.events
   (:require [re-frame.core :as re-frame]
-            [status-im.data-store.discover :as discoveries]
+            [status-im.data-store.discover :as data-store.discover]
             [status-im.protocol.core :as protocol]
             [status-im.ui.screens.discover.navigation]
             [status-im.utils.handlers :as handlers]))
 
 (def request-discoveries-interval-s 600)
+(def maximum-number-of-discoveries 1000)
 
 ;; EFFECTS
 
 (re-frame/reg-fx
   ::send-portions
-  (fn [{:keys [current-public-key web3 contacts to]}]
+  (fn [{:keys [current-public-key web3 contacts to discoveries]}]
     (protocol/send-discoveries-response!
      {:web3        web3
-      :discoveries (discoveries/get-all :asc)
+      :discoveries discoveries
       :message     {:from current-public-key
                     :to   to}})))
-
-(re-frame/reg-fx
-  ::delete-old-discoveries
-  (fn [_]
-    (discoveries/delete :created-at :asc 1000 200)))
 
 (re-frame/reg-fx
   ::request-discoveries
@@ -41,27 +37,6 @@
       (protocol/send-status!
        {:web3    web3
         :message (assoc message :to id)}))))
-
-(re-frame/reg-fx
-  ::get-discovers
-  (fn [_]
-    (re-frame/dispatch [:db-update {:tags        (discoveries/get-all-tags)
-                                    :discoveries (->> (discoveries/get-all :desc)
-                                                      (map (fn [{:keys [message-id] :as discover}]
-                                                             [message-id discover]))
-                                                      (into {}))}])))
-
-(re-frame/reg-fx
-  ::save-discover
-  (fn [discover]
-    (discoveries/save discover)))
-
-(re-frame/reg-fx
-  ::save-discovers
-  (fn [discovers]
-    (doseq [{:keys [message-id] :as discover} discovers]
-      (when-not (discoveries/exists? message-id)
-        (discoveries/save discover)))))
 
 ;; HELPER-FN
 
@@ -86,11 +61,6 @@
 
 
 ;; EVENTS
-
-(handlers/register-handler-fx
-  :db-update
-  (fn [db-update]
-    (merge db db-update)))
 
 ;; TODO(goranjovic): at the moment we do nothing when a status without hashtags is posted
 ;; but we probably should post a special "delete" status that removes any previous
@@ -122,13 +92,9 @@
 (handlers/register-handler-fx
   :init-discoveries
   (fn [_ _]
-    {::delete-old-discoveries nil
-     :dispatch                [:request-discoveries]}))
-
-(handlers/register-handler-fx
-  :load-discovers
-  (fn [_ _]
-    {::get-discovers nil}))
+    {::data-store.discover/get-all [#(re-frame/dispatch [:data-store/db-update {:discoveries %}])
+                                    maximum-number-of-discoveries]
+     :dispatch                     [:request-discoveries]}))
 
 (handlers/register-handler-fx
   :request-discoveries
@@ -169,15 +135,15 @@
       (when-let [discovers (some->> (:data payload)
                                     (filter #(new-discover? discoveries %))
                                     (map #(assoc % :created-at now)))]
-        {:db              (add-discovers db discovers)
-         ::save-discovers discovers}))))
+        {:db                            (add-discovers db discovers)
+         ::data-store.discover/save-all [discovers maximum-number-of-discoveries]}))))
 
 (handlers/register-handler-fx
   :status-received
   [(re-frame/inject-cofx :now)]
   (fn [{{:keys [discoveries] :as db} :db
         now :now}
-       [_ {{:keys [message-id status hashtags profile] :as payload} :payload
+       [_ {{:keys [message-id status profile] :as payload} :payload
            from :from}]]
     (when (new-discover? discoveries payload)
       (let [{:keys [name profile-image]} profile
@@ -186,7 +152,6 @@
                       :photo-path profile-image
                       :status     status
                       :whisper-id from
-                      :tags       (map #(hash-map :name %) hashtags)
                       :created-at now}]
-        {:db             (add-discover db discover)
-         ::save-discover discover}))))
+        {:db                        (add-discover db (assoc discover :tags (handlers/get-hashtags status)))
+         ::data-store.discover/save [discover maximum-number-of-discoveries]}))))

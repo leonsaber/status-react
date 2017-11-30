@@ -4,5 +4,4 @@
 
 (defmethod navigation/preload-data! :discover
   [db _]
-  (re-frame/dispatch [:load-discovers])
   (assoc-in db [:toolbar-search :show] nil))
