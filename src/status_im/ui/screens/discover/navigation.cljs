@@ -4,10 +4,5 @@
 
 (defmethod navigation/preload-data! :discover
   [db _]
-  (-> db
-      (assoc-in [:toolbar-search :show] nil)
-      (assoc :tags (discoveries/get-all-tags)
-             :discoveries (->> (discoveries/get-all :desc)
-                               (map (fn [{:keys [message-id] :as discover}]
-                                      [message-id discover]))
-                               (into {})))))
+  (re-frame/dispatch [:load-discovers])
+  (assoc-in db [:toolbar-search :show] nil))

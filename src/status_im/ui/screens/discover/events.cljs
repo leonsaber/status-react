@@ -43,6 +43,15 @@
         :message (assoc message :to id)}))))
 
 (re-frame/reg-fx
+  ::get-discovers
+  (fn [_]
+    (re-frame/dispatch [:db-update {:tags        (discoveries/get-all-tags)
+                                    :discoveries (->> (discoveries/get-all :desc)
+                                                      (map (fn [{:keys [message-id] :as discover}]
+                                                             [message-id discover]))
+                                                      (into {}))}])))
+
+(re-frame/reg-fx
   ::save-discover
   (fn [discover]
     (discoveries/save discover)))
@@ -66,16 +75,22 @@
                       :contacts           contacts
                       :to                 to}}))
 
-(defn add-discover [db {:keys [message-id tags] :as discover}]
-  (-> db
-      (update :tags concat tags)
-      (assoc-in [:discoveries message-id] discover)))
+(defn add-discover [db {:keys [message-id] :as discover}]
+  (assoc-in db [:discoveries message-id] discover))
+
+(defn add-discovers [db discovers]
+  (reduce add-discover db discovers))
 
 (defn new-discover? [discoveries {:keys [message-id]}]
   (not (get discoveries message-id )))
 
 
 ;; EVENTS
+
+(handlers/register-handler-fx
+  :db-update
+  (fn [db-update]
+    (merge db db-update)))
 
 ;; TODO(goranjovic): at the moment we do nothing when a status without hashtags is posted
 ;; but we probably should post a special "delete" status that removes any previous
@@ -111,6 +126,11 @@
      :dispatch                [:request-discoveries]}))
 
 (handlers/register-handler-fx
+  :load-discovers
+  (fn [_ _]
+    {::get-discovers nil}))
+
+(handlers/register-handler-fx
   :request-discoveries
   [(re-frame/inject-cofx :random-id)]
   (fn [{{:keys [current-public-key web3]
@@ -120,7 +140,7 @@
     ;; TODO (yenda): this was previously using setInterval explicitly, with
     ;; dispatch-later it is using it implicitly. setInterval is
     ;; problematic for such long period of time and will cause a warning
-    ;; for Android in latest versions of react-native
+    ;; for Android in latest versions of react-nativexb
     {::request-discoveries {:current-public-key current-public-key
                             :web3               web3
                             :identities         (handlers/identities contacts)
@@ -149,8 +169,8 @@
       (when-let [discovers (some->> (:data payload)
                                     (filter #(new-discover? discoveries %))
                                     (map #(assoc % :created-at now)))]
-        {:db             (reduce add-discover db discovers)
-         ::add-discovers discovers}))))
+        {:db              (add-discovers db discovers)
+         ::save-discovers discovers}))))
 
 (handlers/register-handler-fx
   :status-received
@@ -168,5 +188,5 @@
                       :whisper-id from
                       :tags       (map #(hash-map :name %) hashtags)
                       :created-at now}]
-        {:db            (add-discover db discover)
-         ::add-discover discover}))))
+        {:db             (add-discover db discover)
+         ::save-discover discover}))))
